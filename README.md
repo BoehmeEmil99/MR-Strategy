@@ -5,7 +5,7 @@ Backtest der Pine-Strategie **„OU MR — Payoff Fixed“** (Ornstein-Uhlenbeck
 ## Ablauf
 1. Im Tab **Actions** „Daten laden und Backtest“ öffnen und **Run workflow** tippen.
 2. Der Workflow lädt für jedes Instrument die 15-Minuten-Kerzen von Dukascopy (parallel, beim ersten Lauf dauert das eine Weile). Daraus werden 1h- und 4h-Kerzen gebildet.
-3. Danach läuft der Backtest. Die Ergebnisse landen in `results/summary.md` (Übersicht), `results/summary.csv` und `results/trades/` (jeder einzelne Trade).
+3. Danach läuft der Backtest **ab 2020** (`START` in `mr/run.py`). Die Ergebnisse landen in `results/summary.md` (Übersicht), `results/regime.md` (Trend vs. Konsolidierung), den passenden CSV-Dateien und `results/trades/` (jeder einzelne Trade mit Regime beim Einstieg).
 
 Spätere Läufe laden nur die neuen Tage nach. Mit `nur_backtest = true` läuft nur der Backtest auf den vorhandenen Daten, zum Beispiel nach einer Parameter-Änderung.
 
@@ -25,8 +25,11 @@ Parameter wie im Pine-Code (`mr/engine.py`, Klasse `Params`):
 
 Die Order-Ausführung bildet TradingView mit `process_orders_on_close=true` nach: Einstieg zum Schlusskurs, Ziel und Stop werden an jedem Balkenschluss neu gesetzt und im nächsten Balken intraday geprüft. Gaps werden zum Open gefüllt. Wenn Ziel und Stop im selben Balken liegen, gilt dieselbe Annahme wie bei TradingView: Liegt das Hoch näher am Open, kommt das Hoch zuerst.
 
+## Trend vs. Konsolidierung
+Jeder Trade bekommt das Marktregime beim Einstieg: Tages-ADX(14) des Vortags ab 25 = Trend, unter 20 = Konsolidierung, dazwischen Übergang (`mr/regime.py`). Bewusst nicht der ADX auf dem Trade-Timeframe, denn der misst beim Einstieg genau die Bewegung, gegen die die Strategie handelt.
+
 ## Instrumente
-Siehe `mr/instruments.py`. Historie ab 2012 bzw. ab Verfügbarkeit bei Dukascopy.
+Siehe `mr/instruments.py`. Daten ab 2012 bzw. ab Verfügbarkeit bei Dukascopy, gezählt werden Trades ab 2020.
 
 - **Aktien:** S&P 500, Nasdaq 100, DAX, Nikkei 225, Emerging Markets (EEM)
 - **Anleihen:** US-Treasuries 20J+ (TLT), 7–10J (IEF), Euro-Bund
