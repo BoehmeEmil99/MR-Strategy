@@ -15,7 +15,7 @@ import pandas as pd
 
 from .engine import Params, backtest, stats
 from .fetch import DATA, load
-from .instruments import INSTRUMENTS
+from .instruments import INSTRUMENTS, SPLITS
 
 ROOT = Path(__file__).resolve().parent.parent
 RES = ROOT / "results"
@@ -80,6 +80,8 @@ def main(only: list[str]) -> None:
         if raw is None or raw.empty:
             print(f"{inst}: keine Daten, übersprungen")
             continue
+        for day, factor in SPLITS.get(inst, []):
+            raw.loc[raw.index < day] *= factor
         for tf, rule in TIMEFRAMES.items():
             df = resample(raw, rule)
             eq, tr = backtest(df, p, tick)

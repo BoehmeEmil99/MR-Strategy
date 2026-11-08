@@ -38,6 +38,12 @@ INSTRUMENTS = {
     "btcusd":        ("Bitcoin",            "Krypto",    0.01,    "2017-05-08"),
 }
 
+# Aktiensplits, die in den Dukascopy-Kursen nicht bereinigt sind:
+# Kurse vor dem Datum werden mit dem Faktor multipliziert.
+SPLITS = {
+    "jnkususd": [("2019-05-06", 3.0)],   # Reverse-Split 1:3
+}
+
 if __name__ == "__main__":
     if "--json" in sys.argv:
         print(json.dumps(list(INSTRUMENTS)))
