@@ -17,7 +17,7 @@ const rows = await getHistoricalRates({
   pauseBetweenBatchesMs: 500,
   retryCount: 5,
   pauseBetweenRetriesMs: 2000,
-  retryOnEmpty: true,
+  retryOnEmpty: false,   // Wochenenden und Feiertage sind leer
   failAfterRetryCount: true,
 });
 
