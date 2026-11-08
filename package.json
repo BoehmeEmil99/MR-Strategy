@@ -1,0 +1,8 @@
+{
+  "name": "mr-strategy",
+  "private": true,
+  "description": "Datenabruf für den Backtest (Dukascopy)",
+  "dependencies": {
+    "dukascopy-node": "1.51.1"
+  }
+}

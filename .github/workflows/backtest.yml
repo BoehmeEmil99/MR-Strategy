@@ -1,0 +1,83 @@
+name: Daten laden und Backtest
+
+on:
+  workflow_dispatch:
+    inputs:
+      nur_backtest:
+        description: "Nur Backtest mit vorhandenen Daten (true/false)"
+        default: "false"
+
+permissions:
+  contents: write
+
+jobs:
+  liste:
+    runs-on: ubuntu-latest
+    outputs:
+      instrumente: ${{ steps.l.outputs.instrumente }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: l
+        run: echo "instrumente=$(python3 -m mr.instruments --json)" >> "$GITHUB_OUTPUT"
+
+  daten:
+    needs: liste
+    if: github.event.inputs.nur_backtest != 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    strategy:
+      fail-fast: false
+      max-parallel: 6
+      matrix:
+        instrument: ${{ fromJson(needs.liste.outputs.instrumente) }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: npm ci
+      - name: Browser für Dukascopy-Abfragen
+        run: npx dukascopy-node --install-browser --with-deps || echo "Browser-Installation übersprungen"
+      - run: pip install -r requirements.txt
+      - name: 15-Minuten-Daten laden
+        run: python -m mr.fetch ${{ matrix.instrument }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m15-${{ matrix.instrument }}
+          path: data/m15/${{ matrix.instrument }}.parquet
+          if-no-files-found: ignore
+          retention-days: 3
+
+  backtest:
+    needs: [liste, daten]
+    if: always() && needs.liste.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - uses: actions/download-artifact@v4
+        if: github.event.inputs.nur_backtest != 'true'
+        with:
+          pattern: m15-*
+          merge-multiple: true
+          path: data/m15
+      - name: Backtest 15m / 1h / 4h
+        run: python -m mr.run
+      - name: Ergebnisse speichern
+        run: |
+          git config user.name "backtest-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add data/ results/
+          git diff --cached --quiet || git commit -m "Daten und Backtest $(date -u +%F)"
+          git push
