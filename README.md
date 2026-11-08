@@ -49,4 +49,5 @@ npm ci && pip install -r requirements.txt
 python -m mr.fetch eurusd      # Daten eines Instruments laden
 python -m mr.run               # Backtest
 python -m pytest tests         # Tests der Order-Logik
+python -m mr.optimize          # Parameter-Raster (Ergebnis: results/optimierung.md)
 ```
