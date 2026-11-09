@@ -22,6 +22,7 @@ import numpy as np
 import pandas as pd
 from numba import njit
 
+from .costs import cost
 from .engine import Params, indicators
 from .fast import trades
 from .fetch import load
@@ -77,7 +78,7 @@ def _one_asset(inst: str) -> tuple[str, dict]:
         a0, a1 = ix.searchsorted(pd.Timestamp(TRAIN[0])), ix.searchsorted(pd.Timestamp(TRAIN[1]))
         b0, b1 = ix.searchsorted(pd.Timestamp(TEST[0])), ix.searchsorted(pd.Timestamp(TEST[1]))
         O, H, L, C = (df[c].to_numpy() for c in ("open", "high", "low", "close"))
-        slip = base.slip_ticks * tick
+        comm, slip = cost(inst, tick)
         out = np.zeros((len(OUTER), len(INNER), 2, 5))
         for oi, (ln, ze, fl) in enumerate(OUTER):
             p = Params(lenMu=ln, lenSig=ln, zEntry=ze, useFlat=fl > 0, maxSlope=fl or 0.05)
@@ -85,7 +86,7 @@ def _one_asset(inst: str) -> tuple[str, dict]:
             mu, sg = ind.mu.to_numpy(), ind.sig.to_numpy()
             bu, se = ind.buy.to_numpy(), ind.sell.to_numpy()
             for ii, (zt, sd, mb) in enumerate(INNER):
-                e, _, _, r, _ = trades(O, H, L, C, mu, sg, bu, se, zt, sd, mb, base.comm, slip)
+                e, _, _, r, _ = trades(O, H, L, C, mu, sg, bu, se, zt, sd, mb, comm, slip)
                 _agg(e, r, a0, a1, b0, b1, out[oi, ii])
         res[tf] = out.reshape(len(OUTER) * len(INNER), 2, 5)
     return inst, res

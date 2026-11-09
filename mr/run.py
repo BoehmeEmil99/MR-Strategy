@@ -15,6 +15,9 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
+from dataclasses import replace
+
+from .costs import cost, describe
 from .engine import Params, backtest, stats
 from .fetch import DATA, load
 from .instruments import INSTRUMENTS, SPLITS
@@ -49,8 +52,7 @@ def markdown(s: pd.DataFrame, p: Params) -> str:
            f"Parameter: EMA/Sigma {p.lenMu}/{p.lenSig}, Entry-Z {p.zEntry}, Ziel {p.zTarget} σ, "
            f"Stop {p.stopDist} σ, Flat-Filter {'an' if p.useFlat else 'aus'} "
            f"(max. Slope {p.maxSlope}), Zeit-Stop {p.maxBars} Balken, "
-           f"Größe {p.pct:.0%} vom Kapital, Kommission {p.comm:.2%} je Seite, "
-           f"Slippage {p.slip_ticks} Ticks. Daten: Dukascopy (Bid).\n",
+           f"Größe {p.pct:.0%} vom Kapital, {describe()}. Daten: Dukascopy (Bid).\n",
            "Ø Trade, Gewinn und Verlust beziehen sich auf den einzelnen Trade "
            "(unabhängig von der Positionsgröße). Rendite, CAGR und Max DD beziehen "
            "sich aufs Gesamtkapital bei 2 % Einsatz je Trade.\n"]
@@ -163,7 +165,9 @@ def main(only: list[str]) -> None:
             full = resample(raw, rule)
             k = int(full.index.searchsorted(pd.Timestamp(START)))
             df = full.iloc[max(0, k - WARMUP):]
-            eq, tr = backtest(df, p, tick)
+            comm, slip = cost(inst, tick)
+            pi = replace(p, comm=comm, slip_ticks=1)
+            eq, tr = backtest(df, pi, slip)                # slip_ticks=1 × Slippage-Preis
             tr = tr[tr.entry >= pd.Timestamp(START)].reset_index(drop=True)
             tr["adx_tag"] = daily_adx_at(raw, tr.entry).round(1)
             tr["regime"] = label(tr["adx_tag"]).to_numpy()

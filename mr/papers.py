@@ -4,8 +4,8 @@
 
 Alle Strategien sind über Uhrzeiten definiert und werden auf den
 15-Minuten-Daten ausgeführt: Einstieg und Ausstieg zum Schlusskurs des
-15-Minuten-Balkens, der zur jeweiligen Uhrzeit endet. Kosten wie beim
-OU-Backtest: 0,02 % Kommission je Seite plus 2 Ticks Slippage je Seite.
+15-Minuten-Balkens, der zur jeweiligen Uhrzeit endet. Kosten: realistisch je
+Instrument (mr/costs.py), zusätzlich ausgewiesen: Pine-Kosten (ret_pine).
 Train = Einstiege 2020–2023, Test = Einstiege ab 2024.
 
 Strategien (Quellen in results/papers.md):
@@ -29,14 +29,13 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
-from .engine import Params
+from .costs import BTC_TAKER_BP, cost
 from .fetch import load
 from .instruments import INSTRUMENTS, SPLITS
 from .regime import daily_adx_at, label
 from .run import RES
 
 START, SPLIT, END = "2020-01-01", "2024-01-01", "2026-12-31"
-COST = Params()                       # comm 0,02 % je Seite, 2 Ticks Slippage
 TOL = pd.Timedelta("30min")           # max. Alter des letzten Kurses
 
 NY, LON, BER, TKY = "America/New_York", "Europe/London", "Europe/Berlin", "Asia/Tokyo"
@@ -76,6 +75,8 @@ class Asset:
             raw.loc[raw.index < day] *= f
         self.inst, self.raw = inst, raw
         self.name, self.klasse, self.tick = INSTRUMENTS[inst][:3]
+        self.comm, self.slip = cost(inst, self.tick)
+        self.comm_pine, self.slip_pine = cost(inst, self.tick, "pine")
         end = raw.index + pd.Timedelta("15min")          # Balken-Ende = Zeitpunkt des Schlusskurses
         self.t = end.tz_localize("UTC").as_unit("ns").asi8
         self.c = raw["close"].to_numpy()
@@ -98,18 +99,30 @@ def at(days: pd.DatetimeIndex, hhmm: str, tz: str) -> pd.DatetimeIndex:
     return loc.tz_convert("UTC")
 
 
+def _net(a: Asset, pe, px, side, mode="real"):
+    """Netto-Rendite je Trade nach Kosten (Kommission je Seite + Slippage je Seite)."""
+    if mode == "pine":
+        comm, slip = a.comm_pine, a.slip_pine
+    elif mode == "taker" and a.inst == "btcusd":
+        comm, slip = BTC_TAKER_BP / 1e4, 0.0
+    else:
+        comm, slip = a.comm, a.slip
+    e, x = pe + side * slip, px - side * slip
+    return side * (x / e - 1) - comm * (1 + x / e)
+
+
 def trades(a: Asset, entry: pd.DatetimeIndex, exit_: pd.DatetimeIndex, side) -> pd.DataFrame:
     side = np.broadcast_to(np.asarray(side, float), (len(entry),)).copy()
     pe, px = a.price(entry), a.price(exit_)
     ok = ~np.isnan(pe) & ~np.isnan(px) & (side != 0) & (exit_ > entry)
     pe, px, side = pe[ok], px[ok], side[ok]
-    slip = COST.slip_ticks * a.tick
-    e, x = pe + side * slip, px - side * slip
     gross = side * (px / pe - 1)
-    net = side * (x / e - 1) - COST.comm * (1 + x / e)
+    net = _net(a, pe, px, side)
     return pd.DataFrame({"asset": a.name, "klasse": a.klasse, "inst": a.inst,
                          "entry": entry[ok].tz_convert(None), "exit": exit_[ok].tz_convert(None),
-                         "side": side.astype(int), "gross": gross, "ret": net})
+                         "side": side.astype(int), "gross": gross, "ret": net,
+                         "ret_pine": _net(a, pe, px, side, "pine"),
+                         "ret_taker": _net(a, pe, px, side, "taker")})
 
 
 def daily_close(a: Asset, hhmm: str, tz: str) -> pd.Series:

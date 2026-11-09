@@ -40,3 +40,22 @@ Für Pine („Ziel vor dem Mittelwert“): ein Ziel hinter dem EMA ist ein negat
 - **Der enge Stop war das Hauptproblem:** Mit 0,75 σ endeten 56 % der Trades am Stop, mit 5 σ sind es 18 %. Die Trefferquote steigt dadurch von 40 % auf 66 %.
 - **Nach Jahren schwankt die 1h-Einstellung stark:** 2020 −0,34 %, 2021 +0,31 %, 2022 +0,07 %, 2023 +0,25 %, 2024 −0,03 %, 2025 +0,48 %, 2026 −0,23 % je Trade.
 - **Aktien-Indizes auf 1h** liegen am besten (Ø +0,29 %, t 1,8, S&P 500 allein t 2,8). Diese Auswahl ist aber im Nachhinein getroffen. Bei 19 Assets erwartet man rein zufällig etwa eines mit t über 2.
+
+---
+
+## Neu gerechnet mit realistischen Kosten (9.11.2026)
+
+Gleiches Raster und gleiches Vorgehen, aber mit den Kosten aus `results/kosten.md` statt der Pine-Kosten.
+
+| | 15m | 1h | 4h |
+|---|---|---|---|
+| Beste Einstellung (Train) | Länge 200, Entry-Z 2,5, Flat 0,01, Ziel −0,5, Stop 2 σ, Zeit-Stop 25 | **Länge 300, Entry-Z 3,0, Flat 0,02, Ziel −0,25, Stop 5 σ, Zeit-Stop aus** | kein stabiler Kandidat |
+| Ø Trade 2020–23 | +5 bp | **+11 bp** | – |
+| Ø Trade 2024–26 (Test) | +2 bp | **+9 bp** | – |
+| Profit Factor Train / Test | 1,28 / 1,11 | **1,12 / 1,10** | – |
+| Kombinationen mit Plus im Train | 1,1 % | 1,5 % | 4,6 % |
+| Original-Einstellung Train / Test | −1,4 / −1,0 bp | −4,2 / −0,4 bp | −9,5 / +8,3 bp |
+
+- **1h:** Die beste Einstellung ist dieselbe wie mit Pine-Kosten und bleibt in beiden Zeiträumen positiv. Der t-Wert liegt aber weiter unter 1, statistisch ist das nicht abgesichert.
+- **15m:** Der Gewinner ist empfindlich. Seine direkten Nachbarn im Raster sind im Schnitt negativ, daher nicht empfehlenswert.
+- **4h:** Die Zielgröße (Ø t-Wert über Assets) bevorzugt hier Einstellungen, die gepoolt sogar Verlust machen. Ein stabiler Gewinner ist nicht erkennbar. Die Original-Einstellung ist auf 4h zwar im Test positiv (+8 bp), im Train aber deutlich negativ.

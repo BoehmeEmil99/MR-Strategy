@@ -2,6 +2,8 @@
 
 Code: `mr/papers.py`, alle Trades: `results/papers/trades.parquet` (nicht im Repo, mit `python -m mr.papers` erzeugen).
 
+> **Hinweis (9.11.2026):** Die Tabellen in dieser Datei rechnen mit den Pine-Kosten. Den Vergleich mit realistischen Kosten je Instrument gibt es in `results/kosten.md`.
+
 **Vorgehen wie beim OU-Backtest:** gleiche Dukascopy-Daten (15 Minuten), gleiche Kosten (0,02 % Kommission je Seite + 2 Ticks Slippage), Train = Einstiege 2020–2023, Test = Einstiege ab 2024. Alle Strategien sind über Uhrzeiten definiert. Deshalb gibt es hier keine Aufteilung in 15m, 1h und 4h: Gehandelt wird zu den Zeiten, die das Paper vorgibt, ausgeführt zum Schlusskurs des 15-Minuten-Balkens. Fast alle Paper-Stichproben enden vor 2020, für sie ist also auch der Train-Zeitraum schon Neuland.
 
 **Brutto** = vor Kosten, **netto** = nach Kosten, Angaben in Basispunkten (bp, 1 bp = 0,01 %) je Trade. **Break-even** = Kosten je Seite, bei denen der Brutto-Vorteil genau aufgezehrt ist. Die Pine-Kosten liegen bei mindestens 2 bp je Seite.

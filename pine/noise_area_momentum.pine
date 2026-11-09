@@ -1,0 +1,121 @@
+//@version=6
+// Noise-Area-Momentum nach Zarattini, Aziz & Barbon (2024):
+// "Beat the Market: An Effective Intraday Momentum Strategy for S&P500 ETF (SPY)".
+//
+// Gedacht für den 30-Minuten-Chart von ES1!/MES1! (S&P 500) oder NQ1!/MNQ1! (Nasdaq 100).
+// Das Paper prüft Signale nur zur vollen und halben Stunde – auf dem 30m-Chart ist das jeder Balken.
+//
+// Regeln:
+// - Rausch-Band je Uhrzeit: Ø von |Kurs / Eröffnung - 1| zur selben Uhrzeit der letzten N Tage.
+// - Obere Grenze = max(Eröffnung, Vortagesschluss) × (1 + σ), untere = min(...) × (1 - σ).
+// - Schluss über der oberen Grenze -> long, unter der unteren -> short.
+// - Trailing-Stop: long raus, wenn Schluss < max(obere Grenze, VWAP); short spiegelbildlich.
+// - Spätestens zum Sitzungsschluss flat.
+//
+// Kosten für Futures über Interactive Brokers: 2,25 USD je ES-Kontrakt und Seite
+// (für MES etwa 0,62 USD einstellen), dazu 1 Tick Slippage.
+strategy("Noise-Area-Momentum (Zarattini/Aziz/Barbon 2024)", overlay=true,
+     initial_capital=100000, default_qty_type=strategy.fixed, default_qty_value=1,
+     commission_type=strategy.commission.cash_per_contract, commission_value=2.25,
+     slippage=1, pyramiding=0, process_orders_on_close=true)
+
+// ---------------------------------------------------------------- Eingaben
+tz       = input.string("America/New_York", "Zeitzone der Sitzung")
+openH    = input.int(9,  "Eröffnung Stunde",  minval=0, maxval=23)
+openM    = input.int(30, "Eröffnung Minute",  minval=0, maxval=59)
+closeH   = input.int(16, "Schluss Stunde",    minval=0, maxval=23)
+closeM   = input.int(0,  "Schluss Minute",    minval=0, maxval=59)
+lookback = input.int(14, "Tage für das Rausch-Band", minval=2)
+bandMult = input.float(1.0, "Band-Multiplikator", minval=0.1, step=0.1)
+useVwap  = input.bool(true, "VWAP als Trailing-Stop")
+allowShort = input.bool(true, "Short-Trades erlauben")
+
+// ---------------------------------------------------------------- Sitzung
+y = year(time, tz)
+mo = month(time, tz)
+d = dayofmonth(time, tz)
+tOpen  = timestamp(tz, y, mo, d, openH, openM)
+tClose = timestamp(tz, y, mo, d, closeH, closeM)
+inSess = time >= tOpen and time < tClose
+isLast = inSess and time_close >= tClose
+newDay = inSess and not inSess[1]
+
+type DayMoves
+    array<float> m
+
+var array<DayMoves> hist = array.new<DayMoves>()
+var array<float> today = array.new<float>()
+var float dayOpen = na
+var float prevClose = na
+var float lastSessClose = na
+var int k = -1
+var float cumPV = 0.0
+var float cumV = 0.0
+
+if newDay
+    if today.size() > 0
+        hist.push(DayMoves.new(today.copy()))
+        if hist.size() > lookback
+            hist.shift()
+    today.clear()
+    dayOpen := open
+    prevClose := lastSessClose
+    k := -1
+    cumPV := 0.0
+    cumV := 0.0
+
+float sigma = na
+float upper = na
+float lower = na
+float sessVwap = na
+
+if inSess
+    k += 1
+    today.push(math.abs(close / dayOpen - 1))
+    cumPV += hlc3 * volume
+    cumV += volume
+    sessVwap := cumV > 0 ? cumPV / cumV : close
+    // Ø Bewegung zur selben Uhrzeit (k-ter Balken) der letzten Tage
+    float s = 0.0
+    int n = 0
+    for dm in hist
+        if dm.m.size() > k
+            s += dm.m.get(k)
+            n += 1
+    if n >= lookback and not na(prevClose)
+        sigma := bandMult * s / n
+        upper := math.max(dayOpen, prevClose) * (1 + sigma)
+        lower := math.min(dayOpen, prevClose) * (1 - sigma)
+
+if isLast
+    lastSessClose := close
+
+// ---------------------------------------------------------------- Handel
+ready = inSess and not isLast and not na(upper)
+
+if ready
+    stopL = useVwap ? math.max(upper, sessVwap) : upper
+    stopS = useVwap ? math.min(lower, sessVwap) : lower
+    if strategy.position_size == 0
+        if close > upper
+            strategy.entry("Long", strategy.long)
+        else if allowShort and close < lower
+            strategy.entry("Short", strategy.short)
+    else if strategy.position_size > 0
+        if allowShort and close < lower
+            strategy.entry("Short", strategy.short, comment="Umkehr")
+        else if close < stopL
+            strategy.close("Long", comment="Stop")
+    else
+        if close > upper
+            strategy.entry("Long", strategy.long, comment="Umkehr")
+        else if close > stopS
+            strategy.close("Short", comment="Stop")
+
+if isLast
+    strategy.close_all(comment="Sitzungsende")
+
+// ---------------------------------------------------------------- Anzeige
+plot(upper, "Obere Grenze", color.green, style=plot.style_linebr)
+plot(lower, "Untere Grenze", color.red, style=plot.style_linebr)
+plot(inSess and useVwap ? sessVwap : na, "VWAP Sitzung", color.orange, style=plot.style_linebr)

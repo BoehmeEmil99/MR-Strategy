@@ -26,7 +26,7 @@ import pandas as pd
 
 from .fetch import load
 from .instruments import INSTRUMENTS
-from .papers import (BER, COST, DAYS, NY, SPLIT, START, TKY, Asset, at, summary,
+from .papers import (BER, DAYS, NY, SPLIT, START, TKY, Asset, _net, at, summary,
                      trades)
 from .regime import daily_adx_at, label
 from .run import RES
@@ -40,12 +40,12 @@ def trades_px(a: Asset, entry, exit_, pe, px, side) -> pd.DataFrame:
     entry = entry if entry.tz is not None else entry.tz_localize("UTC")
     exit_ = exit_ if exit_.tz is not None else exit_.tz_localize("UTC")
     pe, px, side = np.asarray(pe, float), np.asarray(px, float), np.asarray(side, float)
-    slip = COST.slip_ticks * a.tick
-    e, x = pe + side * slip, px - side * slip
     return pd.DataFrame({"asset": a.name, "klasse": a.klasse, "inst": a.inst,
                          "entry": entry.tz_convert(None), "exit": exit_.tz_convert(None),
                          "side": side.astype(int), "gross": side * (px / pe - 1),
-                         "ret": side * (x / e - 1) - COST.comm * (1 + x / e)})
+                         "ret": _net(a, pe, px, side),
+                         "ret_pine": _net(a, pe, px, side, "pine"),
+                         "ret_taker": _net(a, pe, px, side, "taker")})
 
 
 def trading_days(a: Asset, hhmm: str, tz: str) -> pd.DatetimeIndex:
