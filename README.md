@@ -28,6 +28,9 @@ Die Order-Ausführung bildet TradingView mit `process_orders_on_close=true` nach
 ## Trend vs. Konsolidierung
 Jeder Trade bekommt das Marktregime beim Einstieg: Tages-ADX(14) des Vortags ab 25 = Trend, unter 20 = Konsolidierung, dazwischen Übergang (`mr/regime.py`). Bewusst nicht der ADX auf dem Trade-Timeframe, denn der misst beim Einstieg genau die Bewegung, gegen die die Strategie handelt.
 
+## Strategien aus Forschungsarbeiten
+`python -m mr.papers` testet acht Intraday-Strategien aus Studien (Pre-FOMC-Drift, Bitcoin-Abendstunden, Overnight Drift, FX-Fixings, Intraday-Momentum u. a.) mit denselben Daten und Kosten. Ergebnisse und Quellen: `results/papers.md`.
+
 ## Instrumente
 Siehe `mr/instruments.py`. Daten ab 2012 bzw. ab Verfügbarkeit bei Dukascopy, gezählt werden Trades ab 2020.
 
