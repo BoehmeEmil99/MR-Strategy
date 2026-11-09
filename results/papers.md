@@ -66,3 +66,56 @@ Nur bei BTC hilft der Filter erkennbar: Die Abendstunden laufen in Trendphasen b
 - Krohn, Mueller, Whelan (2024): Foreign Exchange Fixings and Returns around the Clock, Journal of Finance 79(1). https://www.bankofcanada.ca/wp-content/uploads/2021/10/swp2021-48.pdf
 - Gao, Han, Li, Zhou (2018): Market Intraday Momentum, Journal of Financial Economics 129(2). https://econpapers.repec.org/RePEc:eee:jfinec:v:129:y:2018:i:2:p:394-414
 - Heston, Korajczyk, Sadka (2010): Intraday Patterns in the Cross-section of Stock Returns, Journal of Finance 65(4). https://arxiv.org/pdf/1005.3535.pdf
+
+---
+
+# Runde 2 (Stand 9.11.2026)
+
+Code: `mr/papers2.py` (`python -m mr.papers2`), gleiche Daten, Kosten und Train/Test-Aufteilung.
+
+## Übersicht
+
+| Strategie | Trades/Jahr | Brutto Train (t) | Brutto Test (t) | Netto Train | Netto Test | Break-even je Seite (Test) |
+|---|---|---|---|---|---|---|
+| Dash for Cash (Monatsende), je Monat | 12 | +34 bp (1,4) | +19 bp (0,7) | +28 bp | +12 bp | 9,4 bp |
+| Noise-Area-Momentum | 1.200 | **+2,6 bp (3,4)** | **+1,7 bp (2,1)** | −3,5 bp | −4,3 bp | 0,9 bp |
+| Gold Asien long / USA short | 570 | +0,2 bp (0,2) | +2,5 bp (1,4) | −4,0 bp | −1,7 bp | 1,2 bp |
+| Opening Range Breakout (15 Min.) | 1.200 | +0,6 bp (0,6) | +1,3 bp (1,5) | −5,9 bp | −5,3 bp | 0,6 bp |
+| Bitcoin Intraday-Momentum | 350 | +0,1 bp (0,1) | −1,0 bp (−1,2) | −3,9 bp | −5,0 bp | – |
+| FX Heimat- vs. US-Stunden | 3.000 | 0,0 bp (−0,1) | −0,1 bp (−0,5) | −4,4 bp | −4,5 bp | – |
+
+## Die Strategien im Einzelnen
+
+**1. Dash for Cash.** Etula, Rinne, Suominen & Vaittinen (2020, Review of Financial Studies): Pensionsfonds und andere Institutionen verkaufen vor dem Monatsende Aktien, um Auszahlungen zu decken. Bis zum letzten Verkaufstag (bedingt durch die Abwicklungsfrist) fallen die Kurse, danach erholen sie sich. Umsetzung: Aktien (S&P 500, Nasdaq 100, EEM, DAX, Nikkei) long vom letzten Verkaufstag bis 3 Handelstage nach Monatsende. Der letzte Verkaufstag ist bei US-Aktien T−3 bis Mai 2024 und T−2 seit der Umstellung auf T+1-Abwicklung, bei DAX und Nikkei T−3. Treasuries (TLT, IEF) long ab T−2. Ergebnis: +0,34 % je Monat in 2020–23, +0,19 % in 2024–26. Ein Teil davon ist aber nur der allgemeine Aufwärtstrend. Gegen beliebige gleich lange Haltefenster lagen US-Aktien in 2020–23 um 0,4–0,6 Prozentpunkte vorn, in 2024–26 nicht mehr (S&P 500: 0,35 % gegenüber 0,42 % in beliebigen Fenstern). Kein belastbarer Effekt mehr.
+
+**2. Noise-Area-Momentum.** Zarattini, Aziz & Barbon (2024, Swiss Finance Institute): Aus der Ø-Bewegung seit Eröffnung der letzten 14 Tage wird je Uhrzeit ein „Rausch-Band“ berechnet. Bricht der Kurs zur vollen oder halben Stunde aus dem Band aus, wird in Ausbruchsrichtung gehandelt. Ausstieg, wenn der Kurs zurück ins Band fällt, spätestens zum Handelsschluss. Umsetzung: S&P 500, Nasdaq 100, DAX, EEM, TLT, ohne den VWAP-Stop des Papers (keine Volumendaten). Ergebnis: Der Brutto-Vorteil ist in jedem Jahr positiv (+0,8 bis +3,5 bp) und auch im Test signifikant (t 2,1), am stärksten bei S&P 500 und Nasdaq 100. Er liegt aber unter den Pine-Kosten: Break-even sind rund 1 bp je Seite. Mit Index-Futures (z. B. ES, Kosten typischerweise unter 1 bp je Seite) läge die Strategie etwa bei null. Von den getesteten Strategien ist sie die stabilste, aber nur mit sehr günstiger Ausführung interessant.
+
+**3. Gold Asien long / USA short.** In einer Masterarbeit an der CBS (Donati & Jung 2019, betreut von Paul Whelan) steigt Gold in asiatischen Handelsstunden und fällt danach, bei Pine-Kosten nicht handelbar. Das ist die schwächste Quelle dieser Runde. Umsetzung: Gold long 00:00–07:00 UTC, short 13:00–20:00 UTC. Ergebnis: in 2020–23 nichts, 2024–26 +2,5 bp brutto (t 1,4), vor allem über das Asien-Bein.
+
+**4. Opening Range Breakout.** Zarattini & Aziz (2023, SSRN): Richtung der ersten 5 Minuten handeln, Stop am Tief bzw. Hoch dieser Kerze, Ziel 10-faches Risiko, sonst Ausstieg zum Schluss. Umsetzung mit der ersten 15-Minuten-Kerze (kürzere Daten haben wir nicht) auf S&P 500, Nasdaq 100, DAX, EEM, TLT. Ergebnis: +0,6 bis +1,3 bp brutto, netto klar negativ. Das passt zu einer unabhängigen Nachrechnung auf fünf Index-CFDs, die vor Kosten das Paper bestätigt, nach Kosten aber bei null landet.
+
+**5. Bitcoin Intraday-Momentum.** Shen, Urquhart & Wang (2022, Financial Review): Die erste halbe Stunde des Tages sagt die letzte halbe Stunde voraus. Umsetzung mit dem UTC-Tag. Ergebnis: kein Effekt.
+
+**6. FX Heimat- vs. US-Stunden.** Ranaldo (2009, Journal of Banking & Finance): Währungen werten während der eigenen Arbeitszeit ab und während der Arbeitszeit des Auslands auf. Umsetzung für EUR, GBP, CHF, JPY und AUD gegen USD: USD long in den Heimat-Stunden, USD short in den US-Stunden. Ergebnis: kein Effekt mehr (Studienzeitraum endete 2005).
+
+## Trend vs. Konsolidierung (netto bp je Trade)
+
+| Strategie | Konsolidierung | Übergang | Trend |
+|---|---|---|---|
+| Dash for Cash | +9,9 | +68,5 | +12,9 |
+| Noise-Area-Momentum | −4,0 | −5,9 | −2,1 |
+| Gold Asien/USA | −4,7 | +0,2 | −3,1 |
+| Opening Range Breakout | −5,2 | −5,9 | −6,1 |
+| Bitcoin Intraday-Momentum | −3,2 | −1,9 | −5,9 |
+| FX Heimat/US | −4,6 | −4,1 | −4,5 |
+
+Noise-Area-Momentum läuft wie erwartet in Trendphasen am besten (brutto +3,4 bp gegenüber +2,4 bp in Konsolidierung). Ein Trendfilter allein reicht aber nicht, um die Kosten zu decken.
+
+## Quellen Runde 2
+- Etula, Rinne, Suominen, Vaittinen (2020): Dash for Cash: Monthly Market Impact of Institutional Liquidity Needs, Review of Financial Studies 33(1). https://acris.aalto.fi/ws/portalfiles/portal/40965155/hhz054.pdf
+- Zarattini, Aziz, Barbon (2024): Beat the Market: An Effective Intraday Momentum Strategy for S&P500 ETF (SPY), SFI Research Paper 24-97. https://www.sfi.ch/de/publications/n-24-97-beat-the-market-an-effective-intraday-momentum-strategy-for-s-p500-etf-spy
+- Zarattini, Aziz (2023): Can Day Trading Really Be Profitable?, SSRN 4416622. https://papers.ssrn.com/abstract=4416622
+- Nachrechnung des ORB auf Index-CFDs: https://www.mql5.com/en/blogs/post/776235
+- Shen, Urquhart, Wang (2022): Bitcoin Intraday Time-Series Momentum, Financial Review 57(2). https://research.birmingham.ac.uk/en/publications/bitcoin-intraday-time-series-momentum/
+- Ranaldo (2009): Segmentation and Time-of-Day Patterns in Foreign Exchange Markets, Journal of Banking & Finance 33(12). https://econpapers.repec.org/RePEc:eee:jbfina:v:33:y:2009:i:12:p:2199-2206
+- Donati, Jung (2019): Gold Price Dynamics Around the Clock, Masterarbeit CBS. https://research.cbs.dk/en/studentProjects/gold-price-dynamics-around-the-clock/
